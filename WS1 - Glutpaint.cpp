@@ -1,5 +1,4 @@
 // WS1 - Glutpaint.cpp : Defines the entry point for the console application.
-//
 
 #include "stdafx.h"
 
@@ -21,6 +20,22 @@ int   nextoffset;
 float objpositions   [99999];  // Menyimpan posisi objek untuk objek (tergabungkan)
 int   objtypelength  [99999];
 int   totalobj;
+bool  objfilled      [99999];
+
+// Object color
+float objcolorr      [99999];
+float objcolorg      [99999];
+float objcolorb      [99999];
+
+// Object text
+// Digunakan untuk banyak objek
+// Source: http://stackoverflow.com/questions/1088622/how-do-i-create-an-array-of-strings-in-c
+typedef struct charsstring 
+{
+   char name[100]; // 100 character array
+} charsstring;
+
+charsstring objchar[99999];
 
 // Cache
 float positioncache [999];
@@ -96,10 +111,13 @@ void myReshape(GLsizei w, GLsizei h)
 }
 
 // type: tipe objeknya. Length: berapa kali objmAddPosition dipanggil
-void objmAddObject(int type, int length) {
+void objmAddObject(int type, int length, float r, float g, float b) {
     objtypes     [totalobj] = type;
-    objtypelength[totalobj] = length * 2;
+    objtypelength[totalobj] = length;
     objposoffset [totalobj] = nextoffset;
+    objcolorr    [totalobj] = r;
+    objcolorg    [totalobj] = g;
+    objcolorb    [totalobj] = b;
     totalobj++;
 }
 
@@ -132,11 +150,50 @@ void myinit(void)
     nextoffset = 0;
 
     // Buat kotak
-    objmAddObject(RECTANGLE, 4);
+    objmAddObject(POLYGON, 4, 0.5, 0.7, 0.1);
     objmAddPosition(0.0, 0.0);
     objmAddPosition(0.0, 100.0);
     objmAddPosition(100.0, 100.0);
+    objmAddPosition(75.0, 150.0);
     objmAddPosition(100.0, 0.0);
+
+}
+
+void drawObject() {
+    int iteratedpos = 0;
+    int baseindex = 0;
+    for (int i = 0; i < totalobj; i++) {
+        // Atur warnanya dulu
+        glColor3f(objcolorr[i], objcolorg[i], objcolorb[i]);
+        switch (objtypes[i]) {
+            case LINE:
+                baseindex = objposoffset[i];
+                // Dengan cara ini, kita bisa copy paste programming
+                glBegin(GL_LINES);
+                glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
+                baseindex += 2;
+                glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
+                glEnd();
+                break;
+            case RECTANGLE:
+            case TRIANGLE:
+            case POLYGON:
+                glBegin(GL_POLYGON);
+                for (int j = 0; j < objtypelength[i]; j++) {
+                    baseindex = j * 2 + objposoffset[i];
+                    glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
+                }
+                glEnd();
+                break;
+            case TEXT:
+                printf ("Unimplemented!");
+                break;
+            case POINTS:
+                
+                break;
+        }
+    }
+    glFlush();
 }
 
 void mouse(int btn, int state, int x, int y)
@@ -155,40 +212,31 @@ void mouse(int btn, int state, int x, int y)
             count = 0;
             draw_mode = where;
         }
-        else switch(draw_mode)
-        {
+        else switch(draw_mode) {
         case(LINE):
-            if(count==0)
-            {
+            if(count==0) {
                 count++;
                 xp[0] = x;
                 yp[0] = y;
-            }
-            else 
-            {
-                glBegin(GL_LINES); 
-                glVertex2i(x,wh-y);
-                glVertex2i(xp[0],wh-yp[0]);
-                glEnd();
+            } else {
+                objmAddObject(LINE, 2, 0.3, 0.3, 0.3);
+                objmAddPosition(xp[0], wh-yp[0]);
+                objmAddPosition(x    , wh-y);
+                
                 count=0;
             }
             break;
         case(RECTANGLE):
-            if(count == 0)
-            {
+            if(count == 0) {
                 count++;
                 xp[0] = x;
                 yp[0] = y;
-            }
-            else 
-            {
-                if(fill) glBegin(GL_POLYGON);
-                else glBegin(GL_LINE_LOOP);
-                glVertex2i(x,wh-y);
-                glVertex2i(x,wh-yp[0]);
-                glVertex2i(xp[0],wh-yp[0]);
-                glVertex2i(xp[0],wh-y);
-                glEnd();
+            } else {
+                objmAddObject(POLYGON, 4, 0.2, 0.2, 0.8);
+                objmAddPosition(x, wh-y);
+                objmAddPosition(x, wh-yp[0]);
+                objmAddPosition(xp[0], wh-yp[0]);
+                objmAddPosition(xp[0], wh-y);
                 count=0;
             }
             break;
@@ -205,23 +253,22 @@ void mouse(int btn, int state, int x, int y)
                 xp[1] = x;
                 yp[1] = y;
                 break;
-            case(2): 
-                if(fill) glBegin(GL_POLYGON);
-                else glBegin(GL_LINE_LOOP);
-                glVertex2i(xp[0],wh-yp[0]);
-                glVertex2i(xp[1],wh-yp[1]);
-                glVertex2i(x,wh-y);
-                glEnd();
+            case(2):
+                objmAddObject(POLYGON, 3, 0.8, 0.2, 0.8);
+                objmAddPosition(xp[0],wh-yp[0]);
+                objmAddPosition(xp[1],wh-yp[1]);
+                objmAddPosition(x,wh-y);
                 count=0;
             }
             break;
         case(POINTS):
             {
-                drawSquare(x,y);
+                objmAddObject(POINTS, 1, 0.2, 0.2, 0.2);
+                objmAddPosition(x,y);
                 count++;
             }
             break;
-        case(TEXT):
+        case(TEXT): 
             {
                 rx=x;
                 ry=wh-y;
@@ -233,6 +280,8 @@ void mouse(int btn, int state, int x, int y)
         glPopAttrib();
         glFlush();
     }
+
+    drawObject();
 }
 
 int pick(int x, int y)
@@ -304,42 +353,7 @@ void key(unsigned char k, int xx, int yy)
 
 }
 
-void drawObject() {
-    // Iterate each
-    // Cek satu-satu
-    glBegin(GL_POLYGON);
-        glVertex2f(50.0, 50.0);
-        glVertex2f(150.0, 50.0);
-        glVertex2f(150.0, 150.0);
-        glVertex2f(50.0, 150.0);
-    glEnd();
 
-
-    int iteratedpos = 0;
-    for (int i = 0; i < totalobj; i++) {
-        switch (objtypes[i]) {
-            case LINE:
-                printf("Unimplemented!");
-                break;
-            case RECTANGLE:
-            case TRIANGLE:
-            case POLYGON:
-                glBegin(GL_POLYGON);
-                for (int j = 0; j < objtypelength[i]; j++) {
-                    int baseindex = j * 2 + objposoffset[i];
-                    glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
-                    printf("Drawing index: %d\n", baseindex);
-                    printf("Drawing %d and %d\n", objpositions[baseindex], objpositions[baseindex + 1]);
-                }
-                glEnd();
-                break;
-            case TEXT:
-            case POINTS:
-                printf ("Unimplemented!");
-                break;
-        }
-    }
-}
 
 void display(void)
 {
@@ -396,7 +410,7 @@ int main(int argc, char** argv)
     glutInit(&argc,argv);
     glutInitDisplayMode (GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(500, 500);
-    glutCreateWindow("square");
+    glutCreateWindow("FidPaint - Powered by GLUT | Worksheet 1 Computer Graphic");
     glutDisplayFunc(display);
     c_menu = glutCreateMenu(color_menu);
     glutAddMenuEntry("Red",1);
