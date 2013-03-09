@@ -40,14 +40,14 @@ int fill = 0; /* fill flag */
 void drawSquare(int x, int y)
 {
 
-        y=wh-y;
-        glColor3ub( (char) rand()%256, (char) rand()%256, (char) rand()%256); 
-        glBegin(GL_POLYGON);
-                glVertex2f(x+size, y+size);
-                glVertex2f(x-size, y+size);
-                glVertex2f(x-size, y-size);
-                glVertex2f(x+size, y-size);
-        glEnd();
+    y=wh-y;
+    glColor3ub( (char) rand()%256, (char) rand()%256, (char) rand()%256); 
+    glBegin(GL_POLYGON);
+    glVertex2f(x+size, y+size);
+    glVertex2f(x-size, y+size);
+    glVertex2f(x-size, y-size);
+    glVertex2f(x+size, y-size);
+    glEnd();
 }
 
 
@@ -66,7 +66,9 @@ void myReshape(GLsizei w, GLsizei h)
 
     /* adjust viewport and  clear */
 
-    glViewport(0,0,w,h);
+    int hcalculated = h - 500;
+    if (hcalculated < 0) hcalculated = 0;
+    glViewport(0,hcalculated,w,h);
     glClearColor (0.8, 0.8, 0.8, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     display();
@@ -81,22 +83,22 @@ void myReshape(GLsizei w, GLsizei h)
 void myinit(void)
 {
 
-	glViewport(0,0,ww,wh);
+    glViewport(0,0,ww,wh);
 
 
-/* Pick 2D clipping window to match size of X window 
-This choice avoids having to scale object coordinates
-each time window is resized */
+    /* Pick 2D clipping window to match size of X window 
+    This choice avoids having to scale object coordinates
+    each time window is resized */
 
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity(); 
-        glOrtho(0.0, (GLdouble) ww , 0.0, (GLdouble) wh , -1.0, 1.0);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity(); 
+    glOrtho(0.0, (GLdouble) ww , 0.0, (GLdouble) wh , -1.0, 1.0);
 
-/* set clear color to black and clear window */
+    /* set clear color to black and clear window */
 
-        glClearColor (0.8, 0.8, 0.8, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glFlush();
+    glClearColor (0.8, 0.8, 0.8, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glFlush();
 }
 
 
@@ -108,96 +110,93 @@ void mouse(int btn, int state, int x, int y)
     static int xp[2],yp[2];
     if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN) 
     {
-       glPushAttrib(GL_ALL_ATTRIB_BITS);
-       
-       where = pick(x,y);
-       glColor3f(r, g, b);
-       if(where != 0)
-       {
-          count = 0;
-          draw_mode = where;
-       }
-       else switch(draw_mode)
-       {
-         case(LINE):
-          if(count==0)
-          {
-              count++;
-              xp[0] = x;
-              yp[0] = y;
-          }
-          else 
-          {
-              glBegin(GL_LINES); 
-                 glVertex2i(x,wh-y);
-                 glVertex2i(xp[0],wh-yp[0]);
-              glEnd();
-              draw_mode=0;
-              count=0;
-          }
-          break;
-        case(RECTANGLE):
-          if(count == 0)
-          {
-              count++;
-              xp[0] = x;
-              yp[0] = y;
-          }
-          else 
-          {
-              if(fill) glBegin(GL_POLYGON);
-              else glBegin(GL_LINE_LOOP);
-                 glVertex2i(x,wh-y);
-                 glVertex2i(x,wh-yp[0]);
-                 glVertex2i(xp[0],wh-yp[0]);
-                 glVertex2i(xp[0],wh-y);
-              glEnd();
-              draw_mode=0;
-              count=0;
-          }
-          break;
-        case (TRIANGLE):
-          switch(count)
-          {
-            case(0):
-              count++;
-              xp[0] = x;
-              yp[0] = y;
-              break;
-            case(1):
-              count++;
-              xp[1] = x;
-              yp[1] = y;
-              break;
-            case(2): 
-              if(fill) glBegin(GL_POLYGON);
-              else glBegin(GL_LINE_LOOP);
-                 glVertex2i(xp[0],wh-yp[0]);
-                 glVertex2i(xp[1],wh-yp[1]);
-                 glVertex2i(x,wh-y);
-              glEnd();
-              draw_mode=0;
-              count=0;
-          }
-          break;
-        case(POINTS):
-          {
-             drawSquare(x,y);
-             count++;
-          }
-		  break;
-		case(TEXT):
-		  {
-			 rx=x;
-			 ry=wh-y;
-			 glRasterPos2i(rx,ry); 
-			 count=0;
-		  }
-       }
+        glPushAttrib(GL_ALL_ATTRIB_BITS);
 
-       glPopAttrib();
-       glFlush();
-     }
+        where = pick(x,y);
+        glColor3f(r, g, b);
+        if(where != 0)
+        {
+            count = 0;
+            draw_mode = where;
+        }
+        else switch(draw_mode)
+        {
+        case(LINE):
+            if(count==0)
+            {
+                count++;
+                xp[0] = x;
+                yp[0] = y;
+            }
+            else 
+            {
+                glBegin(GL_LINES); 
+                glVertex2i(x,wh-y);
+                glVertex2i(xp[0],wh-yp[0]);
+                glEnd();
+                count=0;
+            }
+            break;
+        case(RECTANGLE):
+            if(count == 0)
+            {
+                count++;
+                xp[0] = x;
+                yp[0] = y;
+            }
+            else 
+            {
+                if(fill) glBegin(GL_POLYGON);
+                else glBegin(GL_LINE_LOOP);
+                glVertex2i(x,wh-y);
+                glVertex2i(x,wh-yp[0]);
+                glVertex2i(xp[0],wh-yp[0]);
+                glVertex2i(xp[0],wh-y);
+                glEnd();
+                count=0;
+            }
+            break;
+        case (TRIANGLE):
+            switch(count)
+            {
+            case(0):
+                count++;
+                xp[0] = x;
+                yp[0] = y;
+                break;
+            case(1):
+                count++;
+                xp[1] = x;
+                yp[1] = y;
+                break;
+            case(2): 
+                if(fill) glBegin(GL_POLYGON);
+                else glBegin(GL_LINE_LOOP);
+                glVertex2i(xp[0],wh-yp[0]);
+                glVertex2i(xp[1],wh-yp[1]);
+                glVertex2i(x,wh-y);
+                glEnd();
+                count=0;
+            }
+            break;
+        case(POINTS):
+            {
+                drawSquare(x,y);
+                count++;
+            }
+            break;
+        case(TEXT):
+            {
+                rx=x;
+                ry=wh-y;
+                glRasterPos2i(rx,ry); 
+                count=0;
+            }
+        }
+
+        glPopAttrib();
+        glFlush();
+    }
 }
 
 int pick(int x, int y)
@@ -276,7 +275,7 @@ void drawObject() {
         glVertex2i(150, 150);
         glVertex2i(50, 150);
     glEnd();
-
+}
 
 void display(void)
 {
@@ -317,12 +316,14 @@ void display(void)
 	shift+=glutBitmapWidth(GLUT_BITMAP_9_BY_15, 'B');
 	glRasterPos2i(2*iw/5+shift,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'C');
-    glFlush();
-    glPopAttrib();
-}
 
     drawObject();
 
+    glFlush();
+    glPopAttrib();
+
+    
+}
 
 int main(int argc, char** argv)
 {
