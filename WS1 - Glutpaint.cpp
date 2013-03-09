@@ -3,12 +3,28 @@
 
 #include "stdafx.h"
 
-#define NULL 0
-#define LINE 1
-#define RECTANGLE 2
-#define TRIANGLE  3
-#define POINTS 4
-#define TEXT 5
+// Mendefinisikan macam-macam objek
+#define NULL        0
+#define OBJECTLIST  0
+#define LINE        1
+#define RECTANGLE   2
+#define TRIANGLE    3
+#define POINTS      4
+#define TEXT        5
+#define POLYGON     6
+
+// Untuk menyimpan objek apa saja yang ada
+// untuk keperluan redraw
+int   objtypes       [99999];  // Menyimpan jenis objek pada objek ke-n
+int   objposoffset   [99999];  // Menyimpan posisi ke-i dari objek ke-n
+int   nextoffset;
+float objpositions   [99999];  // Menyimpan posisi objek untuk objek (tergabungkan)
+int   objtypelength  [99999];
+int   totalobj;
+
+// Cache
+float positioncache [999];
+int   totalcache;
 
 void mouse(int, int, int, int);
 void key(unsigned char, int, int);
@@ -58,33 +74,44 @@ void myReshape(GLsizei w, GLsizei h)
 {
     /* adjust clipping box */
 
+    glViewport(0,0,w,h);
+    double normalizedh = (double) 500.0 - (double) 0.5 * (double) h; //(double) h;
+    double normalizedw = 0.0;
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity(); 
-    glOrtho(0.0, (GLdouble)w, 0.0, (GLdouble)h, -1.0, 1.0);
+    glLoadIdentity();
+    glOrtho( 0, w, -h/2.0 + normalizedh, h/2.0 + normalizedh, -1, 1);
+
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity(); 
 
-    /* adjust viewport and  clear */
-
-    int hcalculated = h - 500;
-    if (hcalculated < 0) hcalculated = 0;
-    glViewport(0,hcalculated,w,h);
     glClearColor (0.8, 0.8, 0.8, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     display();
     glFlush();
-
-    /* set global size for use by drawing routine */
-
+    
+    // berikan informasi panjang dan lebar saat ini
+    // untuk dipergunakan fungsi lain
     ww = w;
     wh = h; 
 }
 
+// type: tipe objeknya. Length: berapa kali objmAddPosition dipanggil
+void objmAddObject(int type, int length) {
+    objtypes     [totalobj] = type;
+    objtypelength[totalobj] = length * 2;
+    objposoffset [totalobj] = nextoffset;
+    totalobj++;
+}
+
+void objmAddPosition(float x, float y) {
+    objpositions[nextoffset++] = x;
+    objpositions[nextoffset++] = y;
+}
+
+
 void myinit(void)
 {
-
     glViewport(0,0,ww,wh);
-
 
     /* Pick 2D clipping window to match size of X window 
     This choice avoids having to scale object coordinates
@@ -99,9 +126,18 @@ void myinit(void)
     glClearColor (0.8, 0.8, 0.8, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glFlush();
+
+    // Tes nambah objek
+    totalobj = 0;
+    nextoffset = 0;
+
+    // Buat kotak
+    objmAddObject(RECTANGLE, 4);
+    objmAddPosition(0.0, 0.0);
+    objmAddPosition(0.0, 100.0);
+    objmAddPosition(100.0, 100.0);
+    objmAddPosition(100.0, 0.0);
 }
-
-
 
 void mouse(int btn, int state, int x, int y)
 {
@@ -269,12 +305,40 @@ void key(unsigned char k, int xx, int yy)
 }
 
 void drawObject() {
+    // Iterate each
+    // Cek satu-satu
     glBegin(GL_POLYGON);
-        glVertex2i(50, 50);
-        glVertex2i(150, 50);
-        glVertex2i(150, 150);
-        glVertex2i(50, 150);
+        glVertex2f(50.0, 50.0);
+        glVertex2f(150.0, 50.0);
+        glVertex2f(150.0, 150.0);
+        glVertex2f(50.0, 150.0);
     glEnd();
+
+
+    int iteratedpos = 0;
+    for (int i = 0; i < totalobj; i++) {
+        switch (objtypes[i]) {
+            case LINE:
+                printf("Unimplemented!");
+                break;
+            case RECTANGLE:
+            case TRIANGLE:
+            case POLYGON:
+                glBegin(GL_POLYGON);
+                for (int j = 0; j < objtypelength[i]; j++) {
+                    int baseindex = j * 2 + objposoffset[i];
+                    glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
+                    printf("Drawing index: %d\n", baseindex);
+                    printf("Drawing %d and %d\n", objpositions[baseindex], objpositions[baseindex + 1]);
+                }
+                glEnd();
+                break;
+            case TEXT:
+            case POINTS:
+                printf ("Unimplemented!");
+                break;
+        }
+    }
 }
 
 void display(void)
