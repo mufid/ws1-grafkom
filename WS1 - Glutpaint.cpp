@@ -29,6 +29,7 @@ int pick(int, int);
 /* globals */
 
 GLsizei wh = 500, ww = 500; /* initial window size */
+GLsizei ih = 500, iw = 500;
 GLfloat size = 3.0;   /* half side length of square */
 int draw_mode = 0; /* drawing mode */
 int rx, ry; /*raster position*/
@@ -268,6 +269,15 @@ void key(unsigned char k, int xx, int yy)
 
 }
 
+void drawObject() {
+    glBegin(GL_POLYGON);
+        glVertex2i(50, 50);
+        glVertex2i(150, 50);
+        glVertex2i(150, 150);
+        glVertex2i(50, 150);
+    glEnd();
+
+
 void display(void)
 {
 	int shift=0;
@@ -275,41 +285,43 @@ void display(void)
     glClearColor (0.8, 0.8, 0.8, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     glColor3f(1.0, 1.0, 1.0);
-    screen_box(0,wh-ww/10,ww/10);
+    screen_box(0,ih-iw/10,iw/10);
     glColor3f(1.0, 0.0, 0.0);
-    screen_box(ww/10,wh-ww/10,ww/10);
+    screen_box(iw/10,ih-iw/10,iw/10);
     glColor3f(0.0, 1.0, 0.0);
-    screen_box(ww/5,wh-ww/10,ww/10);
+    screen_box(iw/5,ih-iw/10,iw/10);
     glColor3f(0.0, 0.0, 1.0);
-    screen_box(3*ww/10,wh-ww/10,ww/10);
+    screen_box(3*iw/10,ih-iw/10,iw/10);
     glColor3f(1.0, 1.0, 0.0);
-    screen_box(2*ww/5,wh-ww/10,ww/10);
+    screen_box(2*iw/5,ih-iw/10,iw/10);
     glColor3f(0.0, 0.0, 0.0);
-	screen_box(ww/10+ww/40,wh-ww/10+ww/40,ww/20);
+	screen_box(iw/10+iw/40,ih-iw/10+iw/40,iw/20);
     glBegin(GL_LINES);
-       glVertex2i(wh/40,wh-ww/20);
-       glVertex2i(wh/40+ww/20,wh-ww/20);
+       glVertex2i(ih/40,ih-iw/20);
+       glVertex2i(ih/40+iw/20,ih-iw/20);
     glEnd();
     glBegin(GL_TRIANGLES);
-       glVertex2i(ww/5+ww/40,wh-ww/10+ww/40);
-       glVertex2i(ww/5+ww/20,wh-ww/40);
-       glVertex2i(ww/5+3*ww/40,wh-ww/10+ww/40);
+       glVertex2i(iw/5+iw/40,ih-iw/10+iw/40);
+       glVertex2i(iw/5+iw/20,ih-iw/40);
+       glVertex2i(iw/5+3*iw/40,ih-iw/10+iw/40);
     glEnd();
     glPointSize(3.0);
     glBegin(GL_POINTS);
-       glVertex2i(3*ww/10+ww/20, wh-ww/20);
+       glVertex2i(3*iw/10+iw/20, ih-iw/20);
     glEnd();
-	glRasterPos2i(2*ww/5,wh-ww/20);
+	glRasterPos2i(2*iw/5,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'A');
 	shift=glutBitmapWidth(GLUT_BITMAP_9_BY_15, 'A');
-	glRasterPos2i(2*ww/5+shift,wh-ww/20);
+	glRasterPos2i(2*iw/5+shift,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'B');
 	shift+=glutBitmapWidth(GLUT_BITMAP_9_BY_15, 'B');
-	glRasterPos2i(2*ww/5+shift,wh-ww/20);
+	glRasterPos2i(2*iw/5+shift,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'C');
     glFlush();
     glPopAttrib();
 }
+
+    drawObject();
 
 
 int main(int argc, char** argv)
