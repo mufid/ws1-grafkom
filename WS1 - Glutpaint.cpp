@@ -11,6 +11,7 @@
 #define POINTS      4
 #define TEXT        5
 #define POLYGON     6
+#define EDITMODE    7
 
 // Mendefinisikan warnanya
 #define COLOR1      7
@@ -194,7 +195,11 @@ void drawObject(GLenum mode) {
             case RECTANGLE:
             case TRIANGLE:
             case POLYGON:
-                glBegin(GL_POLYGON);
+                if (objfilled[i] == true)
+                    glBegin(GL_POLYGON);
+                else
+                    glBegin(GL_LINE_LOOP);
+
                 for (int j = 0; j < objtypelength[i]; j++) {
                     baseindex = j * 2 + objposoffset[i];
                     glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
@@ -254,7 +259,7 @@ void mouse(int btn, int state, int x, int y)
  
         glPushAttrib(GL_ALL_ATTRIB_BITS);
         printf("Drawmode: %d", where);
-        if(where != 0 && where <= POLYGON)
+        if(where != 0 && where <= EDITMODE)
         {
             drawcount = 0;
             draw_mode = where;
@@ -375,10 +380,11 @@ int pick (GLint nPicks, GLuint pickBuffer[])
     }
 
     // Kasus 1: LM adalah pemilihan warna
-    if (lm > POLYGON) {
+    if (lm > EDITMODE) {
         printf("Color set: %d\n", lm);
         setcolor(lm); // Begini saja
         drawcount = -1;
+        lm = activecolorenum;
     }
 
     // Dapatkan kontrol terakhir yang bukan nol
@@ -492,6 +498,14 @@ void display(GLenum mode)
     screen_box(2*iw/5,ih-iw/10,iw/10);
     if (draw_mode == TEXT) screen_box2(2*iw/5,ih-iw/10,iw/10);
 
+    if (mode == GL_SELECT) glLoadName(POLYGON);
+    screen_box(5*iw/10,ih-iw/10,iw/10);
+    if (draw_mode == POLYGON) screen_box2(5*iw/10,ih-iw/10,iw/10);
+
+    if (mode == GL_SELECT) glLoadName(EDITMODE);
+    screen_box(6*iw/10,ih-iw/10,iw/10);
+    if (draw_mode == EDITMODE) screen_box2(6*iw/10,ih-iw/10,iw/10);
+
     // Color box. SPARTAAA!
     if (mode == GL_SELECT) glLoadName(COLOR1);
     glColor3f(0.7, 0.7, 0.7);
@@ -530,7 +544,15 @@ void display(GLenum mode)
 
     if (mode == GL_SELECT) glLoadName(COLORNOFILL);
     glColor3f(0.7, 0.7, 0.7);
-    screen_box(5*iw/10,0,iw/10);
+    screen_box(5*iw/10,normalizedh2,iw/10);
+    if (fill == false) screen_box2(5*iw/10,normalizedh2,iw/10);
+    glColor3f(0.5, 0.5, 0.5);
+    glBegin(GL_LINE_LOOP);
+        glVertex2i(5*iw/10 + 10, 10);
+        glVertex2i(5*iw/10 + 10, iw/10 - 10);
+        glVertex2i(6*iw/10 - 10, iw/10 - 10);
+        glVertex2i(6*iw/10 - 10, 10);
+    glEnd();
 
     // Reset select mode
     if (mode == GL_SELECT) {
@@ -562,6 +584,15 @@ void display(GLenum mode)
 	glRasterPos2i(2*iw/5+shift+7,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'C');
 
+    glColor3f(0.4, 0.4, 0.4);
+    glBegin(GL_POLYGON);
+        glVertex2i(5*iw/10,ih-iw/10 + 10);
+        glVertex2i(5*iw/10 + 20,ih-iw/10 + 50);
+        glVertex2i(5*iw/10 + 50,ih-iw/10 + 30);
+        glVertex2i(5*iw/10 + 40,ih-iw/10 + 10);
+        glVertex2i(5*iw/10 + 10,ih-iw/10 + 20);
+    glEnd();
+
     glFlush();
     glPopAttrib();
 
@@ -569,7 +600,6 @@ void display(GLenum mode)
     drawObject(mode);
 }
 void setcolor2(int coloren, bool failsafe) {
-    if (!failsafe) fill = true;
     switch (coloren) {
     case COLOR1:
         ccolorr = 0.2; ccolorg = 0.5; ccolorb = 0.7;
@@ -587,11 +617,11 @@ void setcolor2(int coloren, bool failsafe) {
         ccolorr = 0.7; ccolorg = 0.4; ccolorb = 0.4;
         break;
     case COLORNOFILL:
-        ccolorr = 1; ccolorg = 1; ccolorb = 1;
-        fill = false;
+        fill = !fill;
+        printf("Fill now %s\n", fill ? "ON" : "OFF");
         break;
     }
-    if (!failsafe) activecolorenum = coloren;
+    if (!failsafe && coloren != COLORNOFILL) activecolorenum = coloren;
     glColor3f(ccolorr, ccolorg, ccolorb);   
 }
 void setcolor(int coloren) {
