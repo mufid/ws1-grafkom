@@ -27,6 +27,7 @@ float  ccolorb; // Current color B
 bool   fill;
 int    activecolorenum;
 int    activetoolenum;
+int xp[99], yp[99];
 
 // Untuk menyimpan objek apa saja yang ada
 // untuk keperluan redraw
@@ -226,7 +227,6 @@ void mouse(int btn, int state, int x, int y)
 {
     
     int where;
-    static int xp[99],yp[99];
     if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN) 
     {
         GLuint selectBuf[SIZE];
@@ -333,8 +333,10 @@ void mouse(int btn, int state, int x, int y)
         case(POLYGON): 
             {
             xp[drawcount] = x;
-            yp[drawcount] = y;
+            yp[drawcount] = wh-y + normalizedh2;
             drawcount++;
+            printf("Polygon noted, count: %d\n", drawcount);
+            break;
             }
         case(TEXT): 
             {
@@ -346,11 +348,23 @@ void mouse(int btn, int state, int x, int y)
         }
         }
         glPopAttrib();
-        glFlush();
+        
     }
-    else if(btn==GLUT_RIGHT_BUTTON && state==GLUT_DOWN) {
 
+    // For polygon
+    else if(btn==GLUT_RIGHT_BUTTON && state==GLUT_DOWN) {
+        xp[drawcount] = x;
+        yp[drawcount] =  wh-y + normalizedh2;
+        drawcount++;
+        printf("Ending..");
+        objmAddObject(POLYGON, drawcount);
+        for (int i = 0; i < drawcount; i++) {
+            printf("Added pos x: %d and y: %d", xp[i], yp[i]);
+            objmAddPosition(xp[i], yp[i]);
+        }
+        drawcount = 0;
     }
+    glFlush();
     drawObject(GL_RENDER);
 }
 
@@ -422,13 +436,16 @@ void screen_box2(int x_, int y_, int s_ )
 
 void right_menu(int id)
 {
-   if(id == 1) exit(0);
-   else display(GL_RENDER);
+
 }
 
 void middle_menu(int id)
 {
-
+    if(id == 1) exit(0);
+    else {
+        totalobj = 0;
+        display(GL_RENDER);
+    }
 }
 
 void color_menu(int id)
@@ -659,7 +676,7 @@ int main(int argc, char** argv)
     glutCreateMenu(right_menu);
     glutAddMenuEntry("quit",1);
     glutAddMenuEntry("clear",2);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+    //glutAttachMenu(GLUT_RIGHT_BUTTON);
     glutCreateMenu(middle_menu);
     glutAddSubMenu("Colors", c_menu);
     glutAddSubMenu("Pixel Size", p_menu);
