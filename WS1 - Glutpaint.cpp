@@ -277,11 +277,11 @@ void mouse(int btn, int state, int x, int y)
         // Prepping the edit mode
         // Prepping draw mode
         else if (draw_mode <= POLYGON)  {
-            printf("Entering drawing point note stage with %d\n", draw_mode);
-            switch(draw_mode) {
+        printf("Entering drawing point note stage with %d\n", draw_mode);
+        switch(draw_mode) {
         case(LINE):
             // Tidak menggunakkan displaylist karena nanti akan digambar ulang
-            objmAddObject(POLYGON, 2);
+            objmAddObject(LINE, 2);
             objmAddPosition(x - 50, wh-y + normalizedh2 - 50);
             objmAddPosition(x + 50, wh-y + normalizedh2 + 50);
             drawcount = 0;
@@ -307,28 +307,22 @@ void mouse(int btn, int state, int x, int y)
             draw_mode = EDITMODE;
             break;
         case(POINTS):
-            {
-                objmAddObject(POINTS, 1);
-                objmAddPosition(x,wh-y + normalizedh2);
-                drawcount++;
-            }
+            objmAddObject(POINTS, 1);
+            objmAddPosition(x,wh-y + normalizedh2);
+            drawcount++;
             break;
         case(POLYGON): 
-            {
             xp[drawcount] = x;
             yp[drawcount] = wh-y + normalizedh2;
             drawcount++;
             printf("Polygon noted, count: %d\n", drawcount);
             draw_mode = EDITMODE;
             break;
-            }
         case(TEXT): 
-            {
-                rx=x;
-                ry=wh-y;
-                glRasterPos2i(rx,ry); 
-                drawcount = 0;
-            }
+            rx=x;
+            ry=wh-y;
+            glRasterPos2i(rx,ry); 
+            drawcount = 0;
         }
         }
         glPopAttrib();
@@ -337,26 +331,27 @@ void mouse(int btn, int state, int x, int y)
      
     // For polygon
     else if(btn==GLUT_RIGHT_BUTTON && state==GLUT_DOWN) {
+        // If it's the end of the time
         xp[drawcount] = x;
         yp[drawcount] =  wh-y + normalizedh2;
         drawcount++;
-        printf("Ending..");
+        // Add polygon object
         objmAddObject(POLYGON, drawcount);
+        // And its items
         for (int i = 0; i < drawcount; i++) {
-            printf("Added pos x: %d and y: %d", xp[i], yp[i]);
             objmAddPosition(xp[i], yp[i]);
         }
+        // Done.
         drawcount = 0;
         draw_mode = EDITMODE;
     }
+    // Edit point mode. Just edit the point directly
     else if (btn == GLUT_LEFT_BUTTON && state == GLUT_UP && editedindex >= 0) {
-        printf("Index Edited!\n");
         objpositions[editedindex] = x;
         objpositions[editedindex + 1] = wh-y + normalizedh2;
         editedindex = -1;
     }
 
-    printf("passive");
     glFlush();
     drawObject(GL_RENDER);
 }
@@ -379,7 +374,6 @@ int pick (GLint nPicks, GLuint pickBuffer[])
         objID = *ptr;
         ptr += 3;
         for (k = 0; k < objID; k++) {
-            printf ("   %d ",*ptr);
             if (*ptr != 0) {
                 lm = *ptr;
             }
@@ -391,13 +385,12 @@ int pick (GLint nPicks, GLuint pickBuffer[])
 
     // Kasus 1: LM adalah pemilihan warna
     if (lm > EDITMODE && lm <= COLORNOFILL) {
-        printf("Color set: %d\n", lm);
         setcolor(lm); // Begini saja
         drawcount = -1;
         lm = activecolorenum;
     }
 
-    // Kasus 2: Picking position
+    // Kasus 2: Picking position, dihandle oleh passive
 
     // Dapatkan kontrol terakhir yang bukan nol
     return lpa;
@@ -432,17 +425,13 @@ void screen_box2(int x_, int y_, int s_ )
     glColor3f(0.7, 0.7, 0.7);
 }
 
-void right_menu(int id)
-{
-
-}
-
 void middle_menu(int id)
 {
     if(id == 1) exit(0);
     else {
         totalobj = 0;
-        display(GL_RENDER);
+        charcount = 0;
+        glutPostRedisplay();
     }
 }
 
@@ -731,30 +720,12 @@ int main(int argc, char** argv)
 	glutInitWindowSize(500, 500);
     glutCreateWindow("FidPaint - Powered by GLUT | Worksheet 1 Computer Graphic");
     glutDisplayFunc(displaywrap);
-    c_menu = glutCreateMenu(color_menu);
-    glutAddMenuEntry("Red",1);
-    glutAddMenuEntry("Green",2);
-    glutAddMenuEntry("Blue",3);
-    glutAddMenuEntry("Cyan",4);
-    glutAddMenuEntry("Magenta",5);
-    glutAddMenuEntry("Yellow",6);
-    glutAddMenuEntry("White",7);
-    glutAddMenuEntry("Black",8);
-    p_menu = glutCreateMenu(pixel_menu);
-    glutAddMenuEntry("increase pixel size", 1);
-    glutAddMenuEntry("decrease pixel size", 2);
-    f_menu = glutCreateMenu(fill_menu);
-    glutAddMenuEntry("fill on", 1);
-    glutAddMenuEntry("fill off", 2);
-    glutCreateMenu(right_menu);
+    //c_menu = glutCreateMenu(color_menu);
+    glutCreateMenu(middle_menu);
     glutAddMenuEntry("quit",1);
     glutAddMenuEntry("clear",2);
-    //glutAttachMenu(GLUT_RIGHT_BUTTON);
-    glutCreateMenu(middle_menu);
-    glutAddSubMenu("Colors", c_menu);
-    glutAddSubMenu("Pixel Size", p_menu);
-    glutAddSubMenu("Fill", f_menu);
     glutAttachMenu(GLUT_MIDDLE_BUTTON);
+
     myinit ();
     glutReshapeFunc (myReshape); 
 	glutKeyboardFunc(key);
