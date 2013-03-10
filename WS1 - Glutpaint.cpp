@@ -319,6 +319,7 @@ void mouse(int btn, int state, int x, int y)
             yp[drawcount] = wh-y + normalizedh2;
             drawcount++;
             printf("Polygon noted, count: %d\n", drawcount);
+            draw_mode = EDITMODE;
             break;
             }
         case(TEXT): 
