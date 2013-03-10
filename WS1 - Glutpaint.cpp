@@ -47,12 +47,8 @@ float objcolorb      [99999];
 // Object text
 // Digunakan untuk banyak objek
 // Source: http://stackoverflow.com/questions/1088622/how-do-i-create-an-array-of-strings-in-c
-typedef struct charsstring 
-{
-   char name[100]; // 100 character array
-} charsstring;
-
-charsstring objchar[99999];
+char objchar[99999];
+int  poschar[99999];
 
 // Cache
 float positioncache [999];
@@ -74,7 +70,8 @@ void pixel_menu(int);
 void fill_menu(int);
 void setcolor(int);
 int pick(GLint, GLuint*);
-int drawcount;
+int drawcount = 0;
+int charcount = 0;
 
 /* globals */
 double normalizedh;
@@ -206,9 +203,6 @@ void drawObject(GLenum mode) {
                 }
                 glEnd();
                 break;
-            case TEXT:
-                printf ("Unimplemented!");
-                break;
             case POINTS:
                 glPointSize(20.0);
                 glBegin(GL_POINTS);
@@ -216,6 +210,13 @@ void drawObject(GLenum mode) {
                 glEnd();
                 break;
         }
+    }
+    // Draw chars
+    glColor3f(0.0, 0.0, 0.0);
+    for (int i = 0; i < charcount; i++)
+    {
+        glRasterPos2i(poschar[i*2], poschar[i*2+1]);
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, objchar[i]);
     }
     glFlush();
 }
@@ -325,7 +326,7 @@ void mouse(int btn, int state, int x, int y)
                 rx=x;
                 ry=wh-y;
                 glRasterPos2i(rx,ry); 
-                drawcount=0;
+                drawcount = 0;
             }
         }
         }
@@ -475,7 +476,14 @@ void key(unsigned char k, int xx, int yy)
 	    glColor3f(0.0,0.0,0.0);
     glRasterPos2i(rx,ry);
     glutBitmapCharacter(GLUT_BITMAP_9_BY_15, k);
-    rx+=glutBitmapWidth(GLUT_BITMAP_9_BY_15,k);
+    objchar[charcount] = k;
+    poschar[charcount * 2] = rx;
+    poschar[charcount * 2 + 1] = ry;
+    rx+=glutBitmapWidth(GLUT_BITMAP_9_BY_15, k);
+    charcount++;
+
+    printf("Char %c in db \n", objchar[charcount-1]);
+
     glFlush();
 }
 
@@ -510,7 +518,7 @@ void activeMovement(int x, int y) {
     if (editedindex >= 0) {
         objpositions[editedindex] = x;
         objpositions[editedindex + 1] = wh-y + normalizedh2;
-        display(GL_RENDER);
+        glutPostRedisplay();
     }
 }
 
@@ -519,27 +527,26 @@ void passiveMovement(int x, int y) {
     // atau sedang memindahkan poin yang sedang ditunjuk oleh
     // pick
     if (draw_mode == POLYGON && drawcount > 0) {
+        // Jika tidak diredisplay, maka gambar akan berbayang.
+        glClear(GL_COLOR_BUFFER_BIT);
+        display(GL_RENDER);
         glColor3f(1.0, 1.0, 1.0);
-        // Do nothing
         for (int i = 1; i < drawcount; i++) {
             glBegin(GL_LINES);
                 glVertex2d (xp[i-1],yp[i-1]);
                 glVertex2d (xp[i],yp[i]);
             glEnd();
         }
-
-        //glEnable(GL_COLOR_LOGIC_OP);
-        //glLogicOp(GL_XOR);
-        //printf ("click : %d %d %d %d %d %d\n",x,y,posx,posy,tempx,tempy);
-        glColor3f(0.0,1.0,0.0);
+        
+        glEnable(GL_COLOR_LOGIC_OP);
+        glLogicOp(GL_XOR);
+        glColor3f(1.0,0.0,0.0);
         glBegin(GL_LINES);
-            glVertex2d (xp[drawcount-1],yp[drawcount-1]);
-            glVertex2d (x,wh-y+normalizedh2);
+            glVertex2i (xp[drawcount-1],yp[drawcount-1]);
+            glVertex2i (x,wh-y+normalizedh2);
         glEnd();
-        
-        glDisable(GL_COLOR_LOGIC_OP);
-        
         glFlush();
+        glDisable(GL_COLOR_LOGIC_OP);
     }
     
 }
