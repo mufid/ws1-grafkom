@@ -28,7 +28,7 @@ bool   fill;
 int    activecolorenum;
 int    activetoolenum;
 int xp[99], yp[99];
-
+int editedindex = -1;
 // Untuk menyimpan objek apa saja yang ada
 // untuk keperluan redraw
 int   objtypes       [99999];  // Menyimpan jenis objek pada objek ke-n
@@ -141,7 +141,7 @@ void objmAddObject(int type, int length) {
     setcolor(activecolorenum);
     r = ccolorr; b = ccolorb; g = ccolorg;
 
-    objfilled    [totalobj] = fill;
+    objfilled    [totalobj] = (type == LINE ? false : fill);
     objcolorr    [totalobj] = r;
     objcolorg    [totalobj] = g;
     objcolorb    [totalobj] = b;
@@ -186,7 +186,6 @@ void drawObject(GLenum mode) {
         baseindex = objposoffset[i];
         switch (objtypes[i]) {
             case LINE:
-                // Dengan cara ini, kita bisa copy paste programming
                 glBegin(GL_LINES);
                 glVertex2f((GLfloat) objpositions[baseindex], (GLfloat) objpositions[baseindex+1]);
                 baseindex += 2;
@@ -227,7 +226,7 @@ void mouse(int btn, int state, int x, int y)
 {
     
     int where;
-    if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN) 
+    if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN && editedindex == -1) 
     {
         GLuint selectBuf[SIZE];
         GLint hits;
@@ -258,70 +257,53 @@ void mouse(int btn, int state, int x, int y)
         glutPostRedisplay();
  
         glPushAttrib(GL_ALL_ATTRIB_BITS);
-        printf("Drawmode: %d", where);
-        if(where != 0 && where <= EDITMODE)
+        printf("Drawmode: %d\n", where);
+
+        // Reset mode pertama
+        if (where >= 20) {
+            editedindex = where - 20;
+            printf("Editing idx[%d]\n", editedindex);
+        }
+        else if(where != 0 && where <= EDITMODE)
         {
             drawcount = 0;
             draw_mode = where;
         }
+        // Reset mode kedua
         else if (drawcount < 0) {
             drawcount = 0;
         }
+        // Prepping the edit mode
+        // Prepping draw mode
         else if (draw_mode <= POLYGON)  {
             printf("Entering drawing point note stage with %d\n", draw_mode);
             switch(draw_mode) {
         case(LINE):
-            if(drawcount<=0) {
-                drawcount = 1;
-                xp[0] = x;
-                yp[0] = y;
-            } else {
-                objmAddObject(LINE, 2);
-                objmAddPosition(xp[0], wh - yp[0] + normalizedh2);
-                objmAddPosition(x    , wh - y + normalizedh2);
-                
-                drawcount=0;
-            }
+            // Tidak menggunakkan displaylist karena nanti akan digambar ulang
+            objmAddObject(POLYGON, 2);
+            objmAddPosition(x - 50, wh-y + normalizedh2 - 50);
+            objmAddPosition(x + 50, wh-y + normalizedh2 + 50);
+            drawcount = 0;
+            draw_mode = EDITMODE;
             break;
         case(RECTANGLE):
-            if(drawcount <= 0) {
-                drawcount = 1;
-                xp[0] = x;
-                yp[0] = y;
-            } else {
-                objmAddObject(POLYGON, 4);
-                objmAddPosition(x, wh-y + normalizedh2);
-                objmAddPosition(x, wh-yp[0] + normalizedh2);
-                objmAddPosition(xp[0], wh-yp[0] + normalizedh2);
-                objmAddPosition(xp[0], wh-y + normalizedh2);
-                drawcount=0;
-            }
+            // Tidak menggunakkan displaylist karena nanti akan digambar ulang
+            objmAddObject(POLYGON, 4);
+            objmAddPosition(x + 50, wh-y + normalizedh2 + 50);
+            objmAddPosition(x - 50, wh-y + normalizedh2 + 50);
+            objmAddPosition(x - 50, wh-y + normalizedh2 - 50);
+            objmAddPosition(x + 50, wh-y + normalizedh2 - 50);
+            drawcount=0;
+            draw_mode = EDITMODE;
             break;
         case (TRIANGLE):
-            switch(drawcount)
-            {
-            case(-1):
-                drawcount=1;
-                xp[0] = x;
-                yp[0] = y;
-                break;
-            case(0):
-                drawcount++;
-                xp[0] = x;
-                yp[0] = y;
-                break;
-            case(1):
-                drawcount++;
-                xp[1] = x;
-                yp[1] = y;
-                break;
-            case(2):
-                objmAddObject(POLYGON, 3);
-                objmAddPosition(xp[0],wh-yp[0] + normalizedh2);
-                objmAddPosition(xp[1],wh-yp[1] + normalizedh2);
-                objmAddPosition(x,wh-y + normalizedh2);
-                drawcount=0;
-            }
+            // Tidak menggunakkan displaylist karena nanti akan digambar ulang
+            objmAddObject(POLYGON, 3);
+            objmAddPosition(x, wh-y + normalizedh2 - 50);
+            objmAddPosition(x - 50, wh-y + normalizedh2 + 50);
+            objmAddPosition(x + 50, wh-y + normalizedh2 + 50);
+            drawcount=0;
+            draw_mode = EDITMODE;
             break;
         case(POINTS):
             {
@@ -350,7 +332,7 @@ void mouse(int btn, int state, int x, int y)
         glPopAttrib();
         
     }
-
+     
     // For polygon
     else if(btn==GLUT_RIGHT_BUTTON && state==GLUT_DOWN) {
         xp[drawcount] = x;
@@ -363,7 +345,16 @@ void mouse(int btn, int state, int x, int y)
             objmAddPosition(xp[i], yp[i]);
         }
         drawcount = 0;
+        draw_mode = EDITMODE;
     }
+    else if (btn == GLUT_LEFT_BUTTON && state == GLUT_UP && editedindex >= 0) {
+        printf("Index Edited!\n");
+        objpositions[editedindex] = x;
+        objpositions[editedindex + 1] = wh-y + normalizedh2;
+        editedindex = -1;
+    }
+
+    printf("passive");
     glFlush();
     drawObject(GL_RENDER);
 }
@@ -371,9 +362,9 @@ void mouse(int btn, int state, int x, int y)
 int pick (GLint nPicks, GLuint pickBuffer[])
 {
     int j;
-    unsigned int k, lm;
+    unsigned int k, lm, lpa; // Latest pick not zero
     GLuint objID, *ptr;
-    lm = 0;
+    lm = 0; lpa = 0;
     printf (" Number of objects picked = %d\n", nPicks);
     printf ("\n");
     ptr = pickBuffer;
@@ -387,22 +378,27 @@ int pick (GLint nPicks, GLuint pickBuffer[])
         ptr += 3;
         for (k = 0; k < objID; k++) {
             printf ("   %d ",*ptr);
-            if (*ptr != 0) lm = *ptr;
+            if (*ptr != 0) {
+                lm = *ptr;
+            }
+            if (lpa == 0 && lm != 0) lpa = lm;
             ptr++;
         }
         printf ("\n\n");
     }
 
     // Kasus 1: LM adalah pemilihan warna
-    if (lm > EDITMODE) {
+    if (lm > EDITMODE && lm <= COLORNOFILL) {
         printf("Color set: %d\n", lm);
         setcolor(lm); // Begini saja
         drawcount = -1;
         lm = activecolorenum;
     }
 
+    // Kasus 2: Picking position
+
     // Dapatkan kontrol terakhir yang bukan nol
-    return lm;
+    return lpa;
 }
 
 void screen_box(int x, int y, int s )
@@ -475,12 +471,77 @@ void fill_menu(int id)
 
 void key(unsigned char k, int xx, int yy)
 {
-   if(draw_mode!=TEXT) return;
-	glColor3f(0.0,0.0,0.0);
-   glRasterPos2i(rx,ry);
-   glutBitmapCharacter(GLUT_BITMAP_9_BY_15, k);
-   rx+=glutBitmapWidth(GLUT_BITMAP_9_BY_15,k);
-   glFlush();
+    if(draw_mode!=TEXT) return;
+	    glColor3f(0.0,0.0,0.0);
+    glRasterPos2i(rx,ry);
+    glutBitmapCharacter(GLUT_BITMAP_9_BY_15, k);
+    rx+=glutBitmapWidth(GLUT_BITMAP_9_BY_15,k);
+    glFlush();
+}
+
+void drawEditMode(GLenum mode) {
+    glPushName(1);
+    if (draw_mode == EDITMODE) {
+        int idx = totalobj - 1;
+        printf("Rendering edit mode. Object #%d", idx);
+        if (objtypes[idx] == POLYGON   || 
+            objtypes[idx] == LINE      ||
+            objtypes[idx] == RECTANGLE ||
+            objtypes[idx] == TRIANGLE) {
+            
+            for (int i = 0; i < objtypelength[idx]; i++) {
+                int currentindex = objposoffset[idx] + i * 2;
+                if (mode == GL_SELECT) glLoadName(currentindex + 20);
+                glPointSize(6.0);
+                glColor3f(1.0, 1.0, 1.0);
+                glBegin(GL_POINTS);
+                    glVertex2i(objpositions[currentindex], objpositions[currentindex + 1]);
+                glEnd();
+            }
+        }
+    }
+    glFlush();
+}
+
+void activeMovement(int x, int y) {
+    // Hanya dijalankan jika sedang menggambar polygon atau
+    // atau sedang memindahkan poin yang sedang ditunjuk oleh
+    // pick
+    if (editedindex >= 0) {
+        objpositions[editedindex] = x;
+        objpositions[editedindex + 1] = wh-y + normalizedh2;
+        display(GL_RENDER);
+    }
+}
+
+void passiveMovement(int x, int y) {
+    // Hanya dijalankan jika sedang menggambar polygon atau
+    // atau sedang memindahkan poin yang sedang ditunjuk oleh
+    // pick
+    if (draw_mode == POLYGON && drawcount > 0) {
+        glColor3f(1.0, 1.0, 1.0);
+        // Do nothing
+        for (int i = 1; i < drawcount; i++) {
+            glBegin(GL_LINES);
+                glVertex2d (xp[i-1],yp[i-1]);
+                glVertex2d (xp[i],yp[i]);
+            glEnd();
+        }
+
+        //glEnable(GL_COLOR_LOGIC_OP);
+        //glLogicOp(GL_XOR);
+        //printf ("click : %d %d %d %d %d %d\n",x,y,posx,posy,tempx,tempy);
+        glColor3f(0.0,1.0,0.0);
+        glBegin(GL_LINES);
+            glVertex2d (xp[drawcount-1],yp[drawcount-1]);
+            glVertex2d (x,wh-y+normalizedh2);
+        glEnd();
+        
+        glDisable(GL_COLOR_LOGIC_OP);
+        
+        glFlush();
+    }
+    
 }
 
 void display(GLenum mode)
@@ -615,6 +676,8 @@ void display(GLenum mode)
 
     // Object redraw
     drawObject(mode);
+    // drawEditMode
+    drawEditMode(mode);
 }
 void setcolor2(int coloren, bool failsafe) {
     switch (coloren) {
@@ -641,6 +704,8 @@ void setcolor2(int coloren, bool failsafe) {
     if (!failsafe && coloren != COLORNOFILL) activecolorenum = coloren;
     glColor3f(ccolorr, ccolorg, ccolorb);   
 }
+
+// Wrapper for setting color
 void setcolor(int coloren) {
     setcolor2(coloren, false);
 }
@@ -686,6 +751,8 @@ int main(int argc, char** argv)
     glutReshapeFunc (myReshape); 
 	glutKeyboardFunc(key);
     glutMouseFunc (mouse);
+    glutPassiveMotionFunc(passiveMovement); 
+    glutMotionFunc(activeMovement);
     glutMainLoop();
 
 }
