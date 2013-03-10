@@ -1,6 +1,13 @@
-// WS1 - Glutpaint.cpp : Defines the entry point for the console application.
+// WS1 - Glutpaint.cpp
+// Muhammad Mufid Afif
+// 1006671766
 
-#include "stdafx.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <tchar.h>
+#include <math.h>
+#include <GL/glut.h>
 
 // Mendefinisikan macam-macam objek
 #define NULL        0
@@ -470,8 +477,7 @@ void key(unsigned char k, int xx, int yy)
     poschar[charcount * 2] = rx;
     poschar[charcount * 2 + 1] = ry;
     rx+=glutBitmapWidth(GLUT_BITMAP_9_BY_15, k);
-    charcount++;
-
+    charcount++;    
     printf("Char %c in db \n", objchar[charcount-1]);
 
     glFlush();
@@ -481,7 +487,6 @@ void drawEditMode(GLenum mode) {
     glPushName(1);
     if (draw_mode == EDITMODE) {
         int idx = totalobj - 1;
-        printf("Rendering edit mode. Object #%d", idx);
         if (objtypes[idx] == POLYGON   || 
             objtypes[idx] == LINE      ||
             objtypes[idx] == RECTANGLE ||
@@ -580,6 +585,14 @@ void display(GLenum mode)
     if (mode == GL_SELECT) glLoadName(EDITMODE);
     screen_box(6*iw/10,ih-iw/10,iw/10);
     if (draw_mode == EDITMODE) screen_box2(6*iw/10,ih-iw/10,iw/10);
+    glColor3f(0.4, 0.4, 0.4);
+    glPointSize(3.0);
+    glBegin(GL_POINTS);
+        glVertex2i(6*iw/10 + 10, ih-iw/10 + 20);
+        glVertex2i(6*iw/10 + 30, ih-iw/10 + 20);
+        glVertex2i(6*iw/10 + 20, ih-iw/10 + 40);
+        glVertex2i(6*iw/10 + 30, ih-iw/10 + 40);
+    glEnd();
 
     // Color box. SPARTAAA!
     if (mode == GL_SELECT) glLoadName(COLOR1);
