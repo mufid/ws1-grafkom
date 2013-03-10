@@ -12,6 +12,21 @@
 #define TEXT        5
 #define POLYGON     6
 
+// Mendefinisikan warnanya
+#define COLOR1      7
+#define COLOR2      8
+#define COLOR3      9
+#define COLOR4      10
+#define COLOR5      11
+#define COLORNOFILL 12
+
+float  ccolorr; // Current color R
+float  ccolorg; // Current color G
+float  ccolorb; // Current color B
+bool   fill;
+int    activecolorenum;
+int    activetoolenum;
+
 // Untuk menyimpan objek apa saja yang ada
 // untuk keperluan redraw
 int   objtypes       [99999];  // Menyimpan jenis objek pada objek ke-n
@@ -43,10 +58,10 @@ int   totalcache;
 
 void mouse(int, int, int, int);
 void key(unsigned char, int, int);
-void display(void);
+void display(GLenum);
 void drawSquare(int, int);
 void myReshape(GLsizei, GLsizei);
-
+void setcolor2(int, bool);
 void myinit(void);
 
 void screen_box(int, int, int);
@@ -55,7 +70,9 @@ void middle_menu(int);
 void color_menu(int);
 void pixel_menu(int);
 void fill_menu(int);
-int pick(int, int);
+void setcolor(int);
+int pick(GLint, GLuint*);
+int drawcount;
 
 /* globals */
 double normalizedh;
@@ -68,7 +85,6 @@ int draw_mode = 0; /* drawing mode */
 int rx, ry; /*raster position*/
 
 GLfloat r = 1.0, g = 1.0, b = 1.0; /* drawing color */
-int fill = 0; /* fill flag */
 
 void drawSquare(int x, int y)
 {
@@ -103,7 +119,7 @@ void myReshape(GLsizei w, GLsizei h)
 
     glClearColor (0.8, 0.8, 0.8, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    display();
+    display(GL_RENDER);
     glFlush();
     
     // berikan informasi panjang dan lebar saat ini
@@ -113,11 +129,17 @@ void myReshape(GLsizei w, GLsizei h)
     normalizedh2 = 500 - h;
 }
 
-// type: tipe objeknya. Length: berapa kali objmAddPosition dipanggil
-void objmAddObject(int type, int length, float r, float g, float b) {
+// type: tipe objeknya. Length: berapa kali objmAddPosition akan dipanggil
+void objmAddObject(int type, int length) {
     objtypes     [totalobj] = type;
     objtypelength[totalobj] = length;
     objposoffset [totalobj] = nextoffset;
+
+    float r, g, b;
+    setcolor(activecolorenum);
+    r = ccolorr; b = ccolorb; g = ccolorg;
+
+    objfilled    [totalobj] = fill;
     objcolorr    [totalobj] = r;
     objcolorg    [totalobj] = g;
     objcolorb    [totalobj] = b;
@@ -148,18 +170,9 @@ void myinit(void)
     glClear(GL_COLOR_BUFFER_BIT);
     glFlush();
 
-    // Tes nambah objek
+    // Inisialisasi nilai untuk semuanya
     totalobj = 0;
     nextoffset = 0;
-
-    // Buat kotak
-    objmAddObject(POLYGON, 4, 0.5, 0.7, 0.1);
-    objmAddPosition(0.0, 0.0);
-    objmAddPosition(0.0, 100.0);
-    objmAddPosition(100.0, 100.0);
-    objmAddPosition(75.0, 150.0);
-    objmAddPosition(100.0, 0.0);
-
 }
 
 void drawObject(GLenum mode) {
@@ -206,9 +219,9 @@ void drawObject(GLenum mode) {
 
 void mouse(int btn, int state, int x, int y)
 {
-    static int count;
+    
     int where;
-    static int xp[2],yp[2];
+    static int xp[99],yp[99];
     if(btn==GLUT_LEFT_BUTTON && state==GLUT_DOWN) 
     {
         GLuint selectBuf[SIZE];
@@ -229,115 +242,147 @@ void mouse(int btn, int state, int x, int y)
     
         gluPickMatrix ((GLdouble) x, (GLdouble) (viewport[3] - y), 
                         5.0, 5.0, viewport);
-        gluOrtho2D (-2.0, 2.0, -2.0, 2.0);
+        glOrtho( 0, ww, -wh/2.0 + normalizedh, wh/2.0 + normalizedh, -1, 1);
         display(GL_SELECT);
 
         glMatrixMode (GL_PROJECTION);
         glPopMatrix ();
-        glFlush ();
 
         hits  = glRenderMode (GL_RENDER);
         where = pick(hits, selectBuf);
         glutPostRedisplay();
  
         glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-        glColor3f(r, g, b);
-        if(where != 0)
+        printf("Drawmode: %d", where);
+        if(where != 0 && where <= POLYGON)
         {
-            count = 0;
+            drawcount = 0;
             draw_mode = where;
         }
-        else switch(draw_mode) {
+        else if (drawcount < 0) {
+            drawcount = 0;
+        }
+        else if (draw_mode <= POLYGON)  {
+            printf("Entering drawing point note stage with %d\n", draw_mode);
+            switch(draw_mode) {
         case(LINE):
-            if(count==0) {
-                count++;
+            if(drawcount<=0) {
+                drawcount = 1;
                 xp[0] = x;
                 yp[0] = y;
             } else {
-                objmAddObject(LINE, 2, 0.3, 0.3, 0.3);
+                objmAddObject(LINE, 2);
                 objmAddPosition(xp[0], wh - yp[0] + normalizedh2);
                 objmAddPosition(x    , wh - y + normalizedh2);
                 
-                count=0;
+                drawcount=0;
             }
             break;
         case(RECTANGLE):
-            if(count == 0) {
-                count++;
+            if(drawcount <= 0) {
+                drawcount = 1;
                 xp[0] = x;
                 yp[0] = y;
             } else {
-                objmAddObject(POLYGON, 4, 0.2, 0.2, 0.8);
+                objmAddObject(POLYGON, 4);
                 objmAddPosition(x, wh-y + normalizedh2);
                 objmAddPosition(x, wh-yp[0] + normalizedh2);
                 objmAddPosition(xp[0], wh-yp[0] + normalizedh2);
                 objmAddPosition(xp[0], wh-y + normalizedh2);
-                count=0;
+                drawcount=0;
             }
             break;
         case (TRIANGLE):
-            switch(count)
+            switch(drawcount)
             {
+            case(-1):
+                drawcount=1;
+                xp[0] = x;
+                yp[0] = y;
+                break;
             case(0):
-                count++;
+                drawcount++;
                 xp[0] = x;
                 yp[0] = y;
                 break;
             case(1):
-                count++;
+                drawcount++;
                 xp[1] = x;
                 yp[1] = y;
                 break;
             case(2):
-                objmAddObject(POLYGON, 3, 0.8, 0.2, 0.8);
+                objmAddObject(POLYGON, 3);
                 objmAddPosition(xp[0],wh-yp[0] + normalizedh2);
                 objmAddPosition(xp[1],wh-yp[1] + normalizedh2);
                 objmAddPosition(x,wh-y + normalizedh2);
-                count=0;
+                drawcount=0;
             }
             break;
         case(POINTS):
             {
-                objmAddObject(POINTS, 1, 0.2, 0.2, 0.2);
+                objmAddObject(POINTS, 1);
                 objmAddPosition(x,wh-y + normalizedh2);
-                count++;
+                drawcount++;
             }
             break;
+        case(POLYGON): 
+            {
+            xp[drawcount] = x;
+            yp[drawcount] = y;
+            drawcount++;
+            }
         case(TEXT): 
             {
                 rx=x;
                 ry=wh-y;
                 glRasterPos2i(rx,ry); 
-                count=0;
+                drawcount=0;
             }
         }
-
+        }
         glPopAttrib();
         glFlush();
     }
+    else if(btn==GLUT_RIGHT_BUTTON && state==GLUT_DOWN) {
 
-    drawObject();
+    }
+    drawObject(GL_RENDER);
 }
 
-void processHits (GLint hits, GLuint buffer[])
+int pick (GLint nPicks, GLuint pickBuffer[])
 {
-   unsigned int i, j;
-   GLuint ii, jj, names, *ptr;
+    int j;
+    unsigned int k, lm;
+    GLuint objID, *ptr;
+    lm = 0;
+    printf (" Number of objects picked = %d\n", nPicks);
+    printf ("\n");
+    ptr = pickBuffer;
 
-   printf ("hits = %d\n", hits);
-   ptr = (GLuint *) buffer; 
-   for (i = 0; i < hits; i++) {	/*  for each hit  */
-      names = *ptr;
-	  ptr+=3;
-      for (j = 0; j < names; j++) { /*  for each name */
-         if(*ptr==1) printf ("red rectangle\n");
-         else printf ("blue rectangle\n");
-         ptr++;
-      }
-      printf ("\n");
-   }
-   return ptr;
+    // If nothing picked, just return zero
+    if (nPicks == 0) return 0;
+
+    /*  Output all items in each pick record.  */
+    for (j = 0; j < nPicks; j++) {
+        objID = *ptr;
+        ptr += 3;
+        for (k = 0; k < objID; k++) {
+            printf ("   %d ",*ptr);
+            if (*ptr != 0) lm = *ptr;
+            ptr++;
+        }
+        printf ("\n\n");
+    }
+
+    // Kasus 1: LM adalah pemilihan warna
+    if (lm > POLYGON) {
+        printf("Color set: %d\n", lm);
+        setcolor(lm); // Begini saja
+        drawcount = -1;
+    }
+
+    // Dapatkan kontrol terakhir yang bukan nol
+    return lm;
 }
 
 void screen_box(int x, int y, int s )
@@ -350,10 +395,29 @@ void screen_box(int x, int y, int s )
     glEnd();
 }
 
+// Menggambar tanpa isi
+void screen_box2(int x_, int y_, int s_ )
+{
+    int s = s_ - 10;
+    int x = x_ + 5;
+    int y = y_ + 5;
+
+    glColor3f(0.4, 0.4, 0.4);
+    glLineWidth(5.0);
+    glBegin(GL_LINE_LOOP);
+      glVertex2i(x, y);
+      glVertex2i(x+s, y);
+      glVertex2i(x+s, y+s);
+      glVertex2i(x, y+s);
+    glEnd();
+    glLineWidth(1.0);
+    glColor3f(0.7, 0.7, 0.7);
+}
+
 void right_menu(int id)
 {
    if(id == 1) exit(0);
-   else display();
+   else display(GL_RENDER);
 }
 
 void middle_menu(int id)
@@ -407,16 +471,71 @@ void display(GLenum mode)
     // Warna untuk latar belakang
     glColor3f(0.7, 0.7, 0.7);
 
+    // Toolbox Background
     if (mode == GL_SELECT) glLoadName(LINE);
     screen_box(0,ih-iw/10,iw/10);
+    if (draw_mode == LINE) screen_box2(0,ih-iw/10,iw/10);
+
     if (mode == GL_SELECT) glLoadName(RECTANGLE);
     screen_box(iw/10,ih-iw/10,iw/10);
+    if (draw_mode == RECTANGLE) screen_box2(iw/10,ih-iw/10,iw/10);
+
     if (mode == GL_SELECT) glLoadName(TRIANGLE);
     screen_box(iw/5,ih-iw/10,iw/10);
+    if (draw_mode == TRIANGLE) screen_box2(iw/5,ih-iw/10,iw/10);
+
     if (mode == GL_SELECT) glLoadName(POINTS);
     screen_box(3*iw/10,ih-iw/10,iw/10);
+    if (draw_mode == POINTS) screen_box2(3*iw/10,ih-iw/10,iw/10);
+
     if (mode == GL_SELECT) glLoadName(TEXT);
     screen_box(2*iw/5,ih-iw/10,iw/10);
+    if (draw_mode == TEXT) screen_box2(2*iw/5,ih-iw/10,iw/10);
+
+    // Color box. SPARTAAA!
+    if (mode == GL_SELECT) glLoadName(COLOR1);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(0,normalizedh2,iw/10);
+    if (activecolorenum == COLOR1) screen_box2(0,normalizedh2,iw/10);
+    setcolor2(COLOR1, true);
+    screen_box(10,10 + normalizedh2,iw/10 - 20);
+
+    if (mode == GL_SELECT) glLoadName(COLOR2);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(iw/10,normalizedh2,iw/10);
+    if (activecolorenum == COLOR2) screen_box2(iw/10,normalizedh2,iw/10);
+    setcolor2(COLOR2, true);
+    screen_box(10+iw/10,10 + normalizedh2,iw/10 - 20);
+
+    if (mode == GL_SELECT) glLoadName(COLOR3);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(2*iw/10,normalizedh2,iw/10);
+    if (activecolorenum == COLOR3) screen_box2(2*iw/10,normalizedh2,iw/10);
+    setcolor2(COLOR3, true);
+    screen_box(10+2*iw/10,10 + normalizedh2,iw/10 - 20);
+
+    if (mode == GL_SELECT) glLoadName(COLOR4);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(3*iw/10,normalizedh2,iw/10);
+    if (activecolorenum == COLOR4) screen_box2(3*iw/10,normalizedh2,iw/10);
+    setcolor2(COLOR4, true);
+    screen_box(10+3*iw/10,10 + normalizedh2,iw/10 - 20);
+
+    if (mode == GL_SELECT) glLoadName(COLOR5);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(4*iw/10,normalizedh2,iw/10);
+    if (activecolorenum == COLOR5) screen_box2(4*iw/10,normalizedh2,iw/10);
+    setcolor2(COLOR5, true);
+    screen_box(10+4*iw/10,10 + normalizedh2,iw/10 - 20);
+
+    if (mode == GL_SELECT) glLoadName(COLORNOFILL);
+    glColor3f(0.7, 0.7, 0.7);
+    screen_box(5*iw/10,0,iw/10);
+
+    // Reset select mode
+    if (mode == GL_SELECT) {
+        glPopName();
+    }
 
     // Warna untuk objek
     glColor3f(0.4, 0.4, 0.4);
@@ -434,24 +553,53 @@ void display(GLenum mode)
     glBegin(GL_POINTS);
        glVertex2i(3*iw/10+iw/20, ih-iw/20);
     glEnd();
-	glRasterPos2i(2*iw/5,ih-iw/20);
+	glRasterPos2i(2*iw/5 + 7,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'A');
 	shift=glutBitmapWidth(GLUT_BITMAP_9_BY_15, 'A');
-	glRasterPos2i(2*iw/5+shift,ih-iw/20);
+	glRasterPos2i(2*iw/5+shift+7,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'B');
 	shift+=glutBitmapWidth(GLUT_BITMAP_9_BY_15, 'B');
-	glRasterPos2i(2*iw/5+shift,ih-iw/20);
+	glRasterPos2i(2*iw/5+shift+7,ih-iw/20);
 	glutBitmapCharacter(GLUT_BITMAP_9_BY_15, 'C');
 
     glFlush();
     glPopAttrib();
 
     // Object redraw
-    if (GL_SELECT == GL_SELECT) {
-        printf("Unimplemented\n");
-        return;
-    }
     drawObject(mode);
+}
+void setcolor2(int coloren, bool failsafe) {
+    if (!failsafe) fill = true;
+    switch (coloren) {
+    case COLOR1:
+        ccolorr = 0.2; ccolorg = 0.5; ccolorb = 0.7;
+        break;
+    case COLOR2:
+        ccolorr = 0.4; ccolorg = 0.3; ccolorb = 0.6;
+        break;
+    case COLOR3:
+        ccolorr = 0.7; ccolorg = 0.5; ccolorb = 0.7;
+        break;
+    case COLOR4:
+        ccolorr = 0.2; ccolorg = 0.7; ccolorb = 0.2;
+        break;
+    case COLOR5:
+        ccolorr = 0.7; ccolorg = 0.4; ccolorb = 0.4;
+        break;
+    case COLORNOFILL:
+        ccolorr = 1; ccolorg = 1; ccolorb = 1;
+        fill = false;
+        break;
+    }
+    if (!failsafe) activecolorenum = coloren;
+    glColor3f(ccolorr, ccolorg, ccolorb);   
+}
+void setcolor(int coloren) {
+    setcolor2(coloren, false);
+}
+
+void displaywrap() {
+    display(GL_RENDER);
 }
 
 int main(int argc, char** argv)
@@ -462,7 +610,7 @@ int main(int argc, char** argv)
     glutInitDisplayMode (GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(500, 500);
     glutCreateWindow("FidPaint - Powered by GLUT | Worksheet 1 Computer Graphic");
-    glutDisplayFunc(display);
+    glutDisplayFunc(displaywrap);
     c_menu = glutCreateMenu(color_menu);
     glutAddMenuEntry("Red",1);
     glutAddMenuEntry("Green",2);
@@ -494,6 +642,3 @@ int main(int argc, char** argv)
     glutMainLoop();
 
 }
-
-
-	
